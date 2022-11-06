@@ -333,73 +333,68 @@ class Algorithm:
 
 
 class Population_MH:
-    def __init__(self,no_elements, no_clusters,cluster_limit,node_weight, distance_matrix):
+    
+    def __init__(self,Pop_size,no_elements, no_clusters,cluster_limit,node_weight, distance_matrix):
+       self.Pop_size = Pop_size
        self.no_elements= no_elements
        self.no_clusters = no_clusters
        self.cluster_limit = cluster_limit
        self.node_weight = node_weight
        self.distance_matrix = distance_matrix
        self.sol = Solution(no_elements,no_clusters,cluster_limit,node_weight, distance_matrix)
+       self.problem = Problem()
+       self.alg = Algorithm(no_elements, no_clusters,cluster_limit,node_weight, distance_matrix)
    
-    def Genenic_Algorithem(Pop_size):
+    def Genenic_Algorithem(self):
         population_list = []
         Best_Found_solution =[]
         Best_Found_solution_fitness =[]
         # Genetrat Initial Population list
-        for s in range(Pop_size):
+        for s in range(self.Pop_size):
             Nodes = self.sol.SolutionRepresention()
             Random_Solution = self.sol.Random_Solution(Nodes)
             population_list.append(Random_Solution)
-
+        Best_iteration = 0
         while(True):
             # Generate Off spring from Parent 
-            offspring = reproduction(population_list)
-            # Evaluate oof spring 
+            offspring = self.reproduction(population_list)
 
             # Select the next generation 
             population_list, Best_on_pop, Best_on_pop_fitness = self.Selection(population_list,offspring)
-            
-            # Comparing the best solution on population with the Bst ever found 
-            if(Best_on_pop > Best_Found_solution_fitness): # check the calculation 
+            print(sum(Best_on_pop_fitness))
+            # Comparing the best solution on population with the Best ever found 
+            if sum(Best_on_pop_fitness) > sum(Best_Found_solution_fitness): # check the calculation 
                 Best_Found_solution =  Best_on_pop.copy()
                 Best_Found_solution_fitness = Best_on_pop_fitness.copy()
-            else:
+                Best_iteration = 0 # set the iteration of best to 0 when it assign a new Best 
+            # stop when same best have exceed the limit 
+            elif Best_iteration >= 1000 :
                 break
+            else:
+                Best_iteration = Best_iteration+ 1 # increment when no beter solution and best itarion not exessed the limit
 
         return Best_Found_solution ,Best_Found_solution_fitness
 
 
-
-    def reproduction(Parent):
-        Parnet_fitness = [] 
+    def reproduction(self,Parent):
         Offspring_list = []
         # Mutation 
-        # not all parent produce the Offspring only some of them depond on property 
+        # not all parent produce the Offspring only some of them
         
-        # # 1- Calcualte  the Parent fitness 
-        # for parent in range(len(Parent)):
-        #     # calculate the fitness for each cluster on indivdual  parent 
-        #     # Not needed because the selection will be random not on propety 
-        #     parent_fit = []
-        #     for c in range(self.no_clusters):
-        #         parent_fit.append(self.Objective_Function_Cluster(parent,c))
-        #     Parnet_fitness.append(parnet_fit)
-
-        # 2- Select randomly n/2 of parnet to genrate offspring (where n = size of population)
+        # 1- Select randomly n/2 of parnet to genrate offspring (where n = size of population)
         selected_Parent = []
-        for itrate in range(len(Parent)/2):
-            index = random.choice(range(len(Parent)))
-            selected_Parent.appened(Parent[index])
+        choose_index = -1
+        for itrate in range(self.Pop_size//2):
+            index = random.choice([x for x in range(self.Pop_size) if x != choose_index]) # for avoide the random to not select same index
+            selected_Parent.append(Parent[index])
+            choose_index = index # keep tracking the selected index 
 
-
-        # 3- generate n offspring from selected parent 
-        for parent in range(len(selected_Parent)):
-            offspring1,offspring2 = neighborhood_Mutation(parent)
-            Offspring_list.appened(offspring1)
-            Offspring_list.appened(offspring2)
-
-
-
+        # 2- generate n offspring from selected parent 
+        for parent in selected_Parent:
+            offspring1,offspring2 = self.neighborhood_Mutation(parent)
+            Offspring_list.append(offspring1)
+            Offspring_list.append(offspring2)
+        
         return Offspring_list
 
     def neighborhood_Mutation (self, parent):
@@ -411,15 +406,19 @@ class Population_MH:
         offspring2 = []
         # calculate the cluster size 
         _,clusters_size = self.sol.clusters_fit_constraint(0,parent)
-
         #Single Swap ( Off spring 1)
         while(True):
             # Select two cluster randomly 
             c1 = random.choice(range(self.no_clusters))
-            c2 = [x for x in range(self.no_clusters) if x != c1]
+            c2 = random.choice([x for x in range(self.no_clusters) if x != c1])
             # return the nodes on each cluster
             c1_nodes = self.sol.Lookup_Cluster_Nodes(c1,parent)
             c2_nodes = self.sol.Lookup_Cluster_Nodes(c2,parent)
+            
+            #Handle empty cluster
+            if(len(c1_nodes)==0 or len(c2_nodes)==0):           
+                continue
+
            # Select randomly two nodes from the clusters 
             n1 = random.choice(c1_nodes)
             n2 = random.choice(c2_nodes)
@@ -430,18 +429,7 @@ class Population_MH:
                 offspring1  = copy_solution.copy()
                 break
             
-        # for c1 in range(self.no_clusters):
-        #     c1_nodes = self.sol.Lookup_Cluster_Nodes(c1,solution)
-        #     for index, n1 in enumerate(c1_nodes):
-        #         for c2 in [x for x in range(self.no_clusters) if x != c1]:
-        #             c2_nodes = self.sol.Lookup_Cluster_Nodes(c2,solution)
-        #             for index, n2 in enumerate(c2_nodes):
-        #                 copy_solution = solution.copy()
-        #                 copy_solution[n1], copy_solution[n2] = copy_solution[n2], copy_solution[n1]
-        #                 if copy_solution not in neighborhood:
-        #                     if(self.problem.Constraint_2Nodes(n1,n2,c1,c2,clusters_size)):
-        #                         neighborhood.append(copy_solution)
-        #                         operator.append(['swap',n1,n2,c1,c2])
+ 
         # Double Move ( Off spring 2)
         move = 0 
         solution = parent.copy()
@@ -451,7 +439,7 @@ class Population_MH:
             # check the cluter of the node
             c1 = solution[node]
             # randomly select other cluster to move 
-            c2 = [x for x in range(self.no_clusters) if x != c1]
+            c2 = random.choice([x for x in range(self.no_clusters) if x != c1])
             # check the constraint 
             if(self.problem.Constraint_1Nodes(node,c1,c2,clusters_size)):
                         copy_solution = solution.copy()
@@ -463,115 +451,131 @@ class Population_MH:
                             offspring2 = solution.copy()
                             break 
 
-        # for c1 in range(self.no_clusters):
-        #     c1_nodes = self.sol.Lookup_Cluster_Nodes(c1,solution)
-        #     for index, n1 in enumerate(c1_nodes):
-        #         for c2 in [x for x in range(self.no_clusters) if x != c1]:
-        #             if(self.problem.Constraint_1Nodes(n1,c1,c2,clusters_size)):
-        #                 copy_solution = solution.copy()
-        #                 copy_solution[n1] = c2
-        #                 neighborhood.append(copy_solution)
-        #                 operator.append(['move',n1,-1,c1,c2])
-
         return offspring1,offspring2  
     
-    def Selection(population_list,offspring):
+    def Selection(self,population_list,offspring):
         New_Population = [] 
         Best_Solution = []
-        # first find the best solution 
-
-
-        # using eltisism 
+        Best_solution_fitness =[]
+        
+        #first find the best solution 
+        population_list_fitness = self.fitness(population_list)
+        offspring_fitness = self.fitness(offspring)
+        for i,indivdual_fit in enumerate(population_list_fitness):
+            if sum(Best_solution_fitness) <sum(indivdual_fit):
+                Best_solution_fitness = indivdual_fit.copy()
+                Best_Solution = population_list[i].copy()
+        
+        for j, ind_fit in enumerate(offspring_fitness):
+            if sum(Best_solution_fitness) < sum(ind_fit):
+                Best_solution_fitness = ind_fit.copy()
+                Best_Solution = offspring[j].copy()
+        
+        ### using eltisism ###
+        
         # select the best solution 
         New_Population.append(Best_Solution)
         
         # select n/2 -1 solution from parent
-        for i in range(len(population_list/2)-1):
-            index = random.choice(range(len(population_list)))
-            New_Population.append(population_list[index])
+        for i in random.sample(range(self.Pop_size), (self.Pop_size //2 )-1):
+            New_Population.append(population_list[i])
         
         # select the other from the offspring
-        remain = len(population_list) - len(New_Population)
-        for j in range(remain):
-            pop = random.choice(range(len(offspring)))
-            New_Population.append(population_list[offspring])
+        for j in random.sample(range(self.Pop_size), (len(population_list) - len(New_Population))):
+            New_Population.append(offspring[j])
 
-        return New_Population, Best_Solution
+        return New_Population, Best_Solution, Best_solution_fitness
+    
+    def fitness(self,population_list):
+        fitness_list =[]
+        # 1- Calcualte  the Parent fitness 
+        for indivdual in population_list:
+            # calculate the fitness for each cluster on indivdual 
+            indivdual_fit = []
+            for c in range(self.no_clusters):
+                indivdual_fit.append(self.alg.Objective_Function_Cluster(indivdual,c))
+            fitness_list.append(indivdual_fit)
+        return fitness_list
 
-
-
-
-##################################################  MAIN  ###########################################################################
-
+##################################################  MAIN Phase 2 ###########################################################################
 X = Problem()   
-
 no_elements , no_clusters , cluster_type , cluster_limit , node_w, distance_matrix = X.GetData("RanReal240/RanReal240_01.txt")
-solution = Solution(no_elements, no_clusters,cluster_limit,node_w, distance_matrix)
-alg = Algorithm(no_elements,no_clusters,cluster_limit,node_w, distance_matrix)
+Pop_size = 12
+population = Population_MH(Pop_size,no_elements,no_clusters,cluster_limit,node_w, distance_matrix)
+best_found = population.Genenic_Algorithem()
+print(best_found)
+
+##################################################  MAIN Phase 1 ###########################################################################
+
+# X = Problem()   
+
+# no_elements , no_clusters , cluster_type , cluster_limit , node_w, distance_matrix = X.GetData("RanReal240/RanReal240_01.txt")
+# solution = Solution(no_elements, no_clusters,cluster_limit,node_w, distance_matrix)
+# alg = Algorithm(no_elements,no_clusters,cluster_limit,node_w, distance_matrix)
 
 
-#Initial Solution
-Nodes = solution.SolutionRepresention()
-# Initial_Solution = solution.Random_Solution(Nodes)
-Initial_Solution = solution.Greedy_Solution(Nodes)
+# #Initial Solution
+# Nodes = solution.SolutionRepresention()
+# # Initial_Solution = solution.Random_Solution(Nodes)
+# Initial_Solution = solution.Greedy_Solution(Nodes)
 
-# 10 Iterative on Local search
-curveObj_Local = []
-curveTime_Local = []
-solutions_local = []
-print("Initial Solution: ", Initial_Solution)
-for i in range(10):
-    start_time = time.time()
-    optimum , objf = alg.local_search(Initial_Solution)
-    end_time = time.time()
-    curveObj_Local.append(sum(objf))
-    solutions_local.append(optimum)
-    elapsed_time = end_time - start_time
-    curveTime_Local.append(elapsed_time)
+# # 10 Iterative on Local search
+# curveObj_Local = []
+# curveTime_Local = []
+# solutions_local = []
+# print("Initial Solution: ", Initial_Solution)
+# for i in range(10):
+#     start_time = time.time()
+#     optimum , objf = alg.local_search(Initial_Solution)
+#     end_time = time.time()
+#     curveObj_Local.append(sum(objf))
+#     solutions_local.append(optimum)
+#     elapsed_time = end_time - start_time
+#     curveTime_Local.append(elapsed_time)
 
-print("-----------------------------------")
-print("Results - Local Search")
-print("Iteration number ", "Objective Function ", 'Time')
+# print("-----------------------------------")
+# print("Results - Local Search")
+# print("Iteration number ", "Objective Function ", 'Time')
 
-for index, sec in enumerate(curveTime_Local):
-    print(index+1, '\t\t\t',curveObj_Local[index],'\t\t', sec) 
-print("Average Time: ",sum(curveTime_Local)/len(curveTime_Local))
-print("Average Objective Function: ",sum(curveObj_Local)/len(curveObj_Local))
-print("Best Solution and Objective Function: ", solutions_local[curveObj_Local.index(max(curveObj_Local))], max(curveObj_Local))
-local_stdev = f'{statistics.stdev(curveObj_Local):.9f}'
-print("Standard Deviation Objective Function: ", local_stdev)
+# for index, sec in enumerate(curveTime_Local):
+#     print(index+1, '\t\t\t',curveObj_Local[index],'\t\t', sec) 
+# print("Average Time: ",sum(curveTime_Local)/len(curveTime_Local))
+# print("Average Objective Function: ",sum(curveObj_Local)/len(curveObj_Local))
+# print("Best Solution and Objective Function: ", solutions_local[curveObj_Local.index(max(curveObj_Local))], max(curveObj_Local))
+# local_stdev = f'{statistics.stdev(curveObj_Local):.9f}'
+# print("Standard Deviation Objective Function: ", local_stdev)
 
-# 10 Iterative on Multi Start search
-curveObj_multi = []
-curveTime_multi = []
-solutions_multi = []
-for i in range(10):
-    start_time = time.time()
-    global_solution , global_objf = alg.multistart(Initial_Solution)
-    end_time = time.time()
-    curveObj_multi.append(sum(global_objf))
-    solutions_multi.append(global_solution)
-    elapsed_time = end_time - start_time
-    curveTime_multi.append(elapsed_time)
-print("-----------------------------------")
-print("Results - Multistart local Search")
-print("Iteration number ", "Objective Function ", 'Time')
+# # 10 Iterative on Multi Start search
+# curveObj_multi = []
+# curveTime_multi = []
+# solutions_multi = []
+# for i in range(10):
+#     start_time = time.time()
+#     global_solution , global_objf = alg.multistart(Initial_Solution)
+#     end_time = time.time()
+#     curveObj_multi.append(sum(global_objf))
+#     solutions_multi.append(global_solution)
+#     elapsed_time = end_time - start_time
+#     curveTime_multi.append(elapsed_time)
+# print("-----------------------------------")
+# print("Results - Multistart local Search")
+# print("Iteration number ", "Objective Function ", 'Time')
 
-for index, sec in enumerate(curveTime_multi):
-    print(index+1, '\t\t\t',curveObj_multi[index],'\t\t', sec) 
-print("Average Time: ",sum(curveTime_multi)/len(curveTime_multi))
-print("Average Objective Function: ", sum(curveObj_multi)/len(curveObj_multi))
-print("Best Solution and Objective Function: ", solutions_multi[curveObj_multi.index(max(curveObj_multi))], max(curveObj_multi))
-multi_stdev = f'{statistics.stdev(curveObj_multi):.9f}'
-print("Standard Deviation Objective Function: ", multi_stdev)
+# for index, sec in enumerate(curveTime_multi):
+#     print(index+1, '\t\t\t',curveObj_multi[index],'\t\t', sec) 
+# print("Average Time: ",sum(curveTime_multi)/len(curveTime_multi))
+# print("Average Objective Function: ", sum(curveObj_multi)/len(curveObj_multi))
+# print("Best Solution and Objective Function: ", solutions_multi[curveObj_multi.index(max(curveObj_multi))], max(curveObj_multi))
+# multi_stdev = f'{statistics.stdev(curveObj_multi):.9f}'
+# print("Standard Deviation Objective Function: ", multi_stdev)
 
 
-#  Plotting
-plt.figure()
-print(curveObj_multi)
-plt.plot(range(10),curveObj_Local,'r', label='Local Search') 
-plt.plot(range(10), curveObj_multi,'b',label='Multistart Search')
-plt.ylabel('Objective Function')
-plt.xlabel('Iteration')
-plt.legend()
-plt.show()
+# #  Plotting
+# plt.figure()
+# print(curveObj_multi)
+# plt.plot(range(10),curveObj_Local,'r', label='Local Search') 
+# plt.plot(range(10), curveObj_multi,'b',label='Multistart Search')
+# plt.ylabel('Objective Function')
+# plt.xlabel('Iteration')
+# plt.legend()
+# plt.show()
