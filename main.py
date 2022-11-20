@@ -1,8 +1,10 @@
 import random
-from itertools import islice
 import time
 import statistics
+import pandas as pd
 from matplotlib import pyplot as plt
+from itertools import islice
+
 
 class Problem:
 
@@ -331,8 +333,8 @@ class Algorithm:
     
         return objF 
 
-
-class Population_MH:
+#phase 2
+class Population_MH: 
     
     def __init__(self,Pop_size,no_elements, no_clusters,cluster_limit,node_weight, distance_matrix):
        self.Pop_size = Pop_size
@@ -345,23 +347,31 @@ class Population_MH:
        self.problem = Problem()
        self.alg = Algorithm(no_elements, no_clusters,cluster_limit,node_weight, distance_matrix)
    
-    def Genenic_Algorithem(self):
+    def Evolutionary_Algorithem(self):
         population_list = []
         Best_Found_solution =[]
         Best_Found_solution_fitness =[]
-        # Genetrat Initial Population list
+        
+        # Generate Initial Population list
         for s in range(self.Pop_size):
             Nodes = self.sol.SolutionRepresention()
             Random_Solution = self.sol.Random_Solution(Nodes)
             population_list.append(Random_Solution)
         Best_iteration = 0
+        
         while(True):
+            # Select the parent that produce the Offspring
+            Parent_fitness = self.Fitness_Evaluate(population_list)
+            Parent_list = self.Selection(population_list,Parent_fitness)
+
             # Generate Off spring from Parent 
-            offspring = self.reproduction(population_list)
+            offspring = self.reproduction(Parent_list)
+            offspring_fitness = self.Fitness_Evaluate(offspring)
 
             # Select the next generation 
-            population_list, Best_on_pop, Best_on_pop_fitness = self.Selection(population_list,offspring)
+            population_list, Best_on_pop, Best_on_pop_fitness = self.Replacement(population_list,offspring,Parent_fitness,offspring_fitness)
             print(sum(Best_on_pop_fitness))
+
             # Comparing the best solution on population with the Best ever found 
             if sum(Best_on_pop_fitness) > sum(Best_Found_solution_fitness): # check the calculation 
                 Best_Found_solution =  Best_on_pop.copy()
@@ -375,22 +385,41 @@ class Population_MH:
 
         return Best_Found_solution ,Best_Found_solution_fitness
 
+    def Selection(self,Parent,Fitness):
 
-    def reproduction(self,Parent):
-        Offspring_list = []
-        # Mutation 
-        # not all parent produce the Offspring only some of them
-        
-        # 1- Select randomly n/2 of parnet to genrate offspring (where n = size of population)
+        # Tournament Selection 
+        # 1- loop n/2 on the Population 
+        # 2- select two Parent Randomly and selcet the best 
+        # selected_Parent = []
+        # choose_index = [*range(self.Pop_size)]
+        # print(choose_index)
+        # for itrate in range(self.Pop_size//2):
+        #     # index = random.choice([x for x in range(self.Pop_size) if x != choose_index]) # for avoide the random to not select same index
+        #     index1 = random.choice(choose_index)
+        #     index2 = random.choice([x for x in choose_index if x != index1]) # for avoide the random to not select same index
+
+        #     if sum(Fitness[index1])> sum(Fitness[index2]):
+        #         selected_Parent.append(Parent[index1])
+        #         choose_index.remove(index1) #= index # keep tracking the selected index
+        #     else:
+        #          selected_Parent.append(Parent[index2])
+        #          choose_index.remove(index2) #= index # keep tracking the selected index  
+
         selected_Parent = []
         choose_index = -1
         for itrate in range(self.Pop_size//2):
             index = random.choice([x for x in range(self.Pop_size) if x != choose_index]) # for avoide the random to not select same index
             selected_Parent.append(Parent[index])
             choose_index = index # keep tracking the selected index 
+        return selected_Parent
 
-        # 2- generate n offspring from selected parent 
-        for parent in selected_Parent:
+    def reproduction(self,Parent):
+        Offspring_list = []
+        # Mutation 
+        # single swap and Double move 
+
+        # Generate n ( POP Size) offspring from selected parent 
+        for parent in Parent:
             offspring1,offspring2 = self.neighborhood_Mutation(parent)
             Offspring_list.append(offspring1)
             Offspring_list.append(offspring2)
@@ -453,18 +482,17 @@ class Population_MH:
 
         return offspring1,offspring2  
     
-    def Selection(self,population_list,offspring):
+    def Replacement(self,population_list,offspring,population_list_fitness,offspring_fitness):
         New_Population = [] 
         Best_Solution = []
         Best_solution_fitness =[]
-        
-        #first find the best solution 
-        population_list_fitness = self.fitness(population_list)
-        offspring_fitness = self.fitness(offspring)
+        pop_fitness_sum = []
+        #First Find the best solution 
         for i,indivdual_fit in enumerate(population_list_fitness):
             if sum(Best_solution_fitness) <sum(indivdual_fit):
                 Best_solution_fitness = indivdual_fit.copy()
                 Best_Solution = population_list[i].copy()
+            pop_fitness_sum.append(sum(indivdual_fit))
         
         for j, ind_fit in enumerate(offspring_fitness):
             if sum(Best_solution_fitness) < sum(ind_fit):
@@ -479,6 +507,11 @@ class Population_MH:
         # select n/2 -1 solution from parent
         for i in random.sample(range(self.Pop_size), (self.Pop_size //2 )-1):
             New_Population.append(population_list[i])
+        # # select n/2 -1 best parent 
+        # number_of_parent = (self.Pop_size //2 )-1
+        # sorted_parent = sorted(range(len(pop_fitness_sum)), key=lambda k: pop_fitness_sum[k],reverse=True)[:number_of_parent]
+        # for sort in sorted_parent:
+        #     New_Population.append(population_list[sort])
         
         # select the other from the offspring
         for j in random.sample(range(self.Pop_size), (len(population_list) - len(New_Population))):
@@ -486,7 +519,7 @@ class Population_MH:
 
         return New_Population, Best_Solution, Best_solution_fitness
     
-    def fitness(self,population_list):
+    def Fitness_Evaluate(self,population_list):
         fitness_list =[]
         # 1- Calcualte  the Parent fitness 
         for indivdual in population_list:
@@ -499,11 +532,46 @@ class Population_MH:
 
 ##################################################  MAIN Phase 2 ###########################################################################
 X = Problem()   
-no_elements , no_clusters , cluster_type , cluster_limit , node_w, distance_matrix = X.GetData("RanReal240/RanReal240_01.txt")
-Pop_size = 12
+no_elements , no_clusters , cluster_type , cluster_limit , node_w, distance_matrix = X.GetData("RanReal480/RanReal480_01.txt")
+
+Pop_size = 8
 population = Population_MH(Pop_size,no_elements,no_clusters,cluster_limit,node_w, distance_matrix)
-best_found = population.Genenic_Algorithem()
-print(best_found)
+Solution_list = []
+bestFitnessList = []
+Timelist = []
+
+for pop_size in range(10):
+    start_time = time.time()
+    best_found, best_found_fitness = population.Evolutionary_Algorithem()
+    end_time = time.time()
+    bestFitnessList.append(sum(best_found_fitness))
+    Solution_list.append(best_found)
+    elapsed_time = end_time - start_time
+    Timelist.append(elapsed_time)
+
+print("Best Solution and Objective Function: ", best_found[bestFitnessList.index(max(bestFitnessList))], max(bestFitnessList))
+print('best Fitness list',bestFitnessList)
+print('Time ',Timelist)
+print("Average Time: ",sum(Timelist)/len(Timelist))
+print("Average Objective Function: ", sum(bestFitnessList)/len(bestFitnessList))
+multi_stdev = f'{statistics.stdev(bestFitnessList):.9f}'
+print("Standard Deviation Objective Function: ", multi_stdev)
+
+plt.figure()
+plt.plot(range(10),bestFitnessList,'b', label='Evolutionary Algorithem') 
+plt.ylabel('Objective Function')
+plt.xlabel('Population Size')
+plt.legend()
+plt.show()
+
+# Store Value to  excel
+df = pd.DataFrame(columns=['Iteration','Fitness','Time'])
+Features = [range(10), bestFitnessList,Timelist]
+for i,j in zip(df.columns,Features):
+    df[i] = j
+
+df.to_excel('RanReal480_01 values.xlsx')
+print("DataFrame is exported successfully to Excel File.")
 
 ##################################################  MAIN Phase 1 ###########################################################################
 
