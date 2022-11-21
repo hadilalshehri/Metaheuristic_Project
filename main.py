@@ -532,7 +532,7 @@ class Population_MH:
 
 ##################################################  MAIN Phase 2 ###########################################################################
 X = Problem()   
-no_elements , no_clusters , cluster_type , cluster_limit , node_w, distance_matrix = X.GetData("RanReal480/RanReal480_01.txt")
+no_elements , no_clusters , cluster_type , cluster_limit , node_w, distance_matrix = X.GetData("Sparse82/Sparse82_02.txt")
 
 Pop_size = 8
 population = Population_MH(Pop_size,no_elements,no_clusters,cluster_limit,node_w, distance_matrix)
@@ -570,7 +570,7 @@ Features = [range(10), bestFitnessList,Timelist]
 for i,j in zip(df.columns,Features):
     df[i] = j
 
-df.to_excel('RanReal480_01 values.xlsx')
+df.to_excel('Sparse82 values.xlsx')
 print("DataFrame is exported successfully to Excel File.")
 
 ##################################################  MAIN Phase 1 ###########################################################################
