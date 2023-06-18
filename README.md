@@ -1,4 +1,4 @@
-# Graph Partitioning using Multistart and Genetic Algorithms
+# Graph Partitioning using Metaheuristic
 
 This project implements a metaheuristic algorithm for graph partitioning optimization problem using a local serach, multistart and genetic algorithms. 
 
@@ -27,11 +27,5 @@ pip install itertools
 
 ```
 
-Once you have the necessary packages installed, you can run the code using the following command:
-
-```
-python main.py <graph_file> <output_dir>
-```
-
-Where `<graph_file>` is the path to the input graph file (in the format described below) and `<output_dir>` is the path to the output directory where the results will be saved.
+Once you have the necessary packages installed, you can run the code `main`
 
